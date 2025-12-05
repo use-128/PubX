@@ -1,0 +1,15 @@
+[project]
+name = "pubx"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pyside6>=6.7.0",
+    "sqlmodel>=0.0.16",
+    "sqlalchemy>=2.0.29",
+    "playwright>=1.42.0",
+]
+
+[tool.setuptools]
+packages = ["app", "publishers"]
