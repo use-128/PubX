@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# data/cache
+userdata
+publishers/userdata
+pubx.egg-info
+*.png
+*.db
+
+

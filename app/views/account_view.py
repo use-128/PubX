@@ -15,11 +15,18 @@ class AccountView(QWidget):
         self.current_account_id = None
 
         # Database connection for the view
-        self.db = QSqlDatabase.addDatabase("QSQLITE", "account_view_conn")
-        self.db.setDatabaseName("database.db")
+        conn_name = "account_view_conn"
+        if QSqlDatabase.contains(conn_name):
+            self.db = QSqlDatabase.database(conn_name)
+        else:
+            self.db = QSqlDatabase.addDatabase("QSQLITE", conn_name)
+            self.db.setDatabaseName("database.db")
+
         if not self.db.open():
             QMessageBox.critical(self, "Database Error", self.db.lastError().text())
             return
+
+        self.model: QSqlTableModel | None = None
 
         self.setup_ui()
         self.load_accounts()
@@ -67,7 +74,7 @@ class AccountView(QWidget):
         right_layout.addWidget(form_group)
         right_layout.addLayout(button_layout)
         right_layout.addStretch()
-        
+
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
 
@@ -82,7 +89,7 @@ class AccountView(QWidget):
         self.save_button.clicked.connect(self.save_account)
         self.delete_button.clicked.connect(self.delete_account)
         self.clear_button.clicked.connect(self.clear_form)
-        self.table_view.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        # ⚠ 注意：这里不再连接 selectionModel，改到 load_accounts 里去
 
     def load_accounts(self):
         self.model = QSqlTableModel(self, self.db)
@@ -96,7 +103,12 @@ class AccountView(QWidget):
         self.model.setHeaderData(self.model.fieldIndex("remark"), Qt.Horizontal, "备注")
 
         self.table_view.setModel(self.model)
-        self.table_view.hideColumn(self.model.fieldIndex("id")) # Hide ID column
+        self.table_view.hideColumn(self.model.fieldIndex("id"))  # Hide ID column
+
+        # ✅ 这里 model 已经设置好了，再获取 selectionModel 一定不是 None
+        sel_model = self.table_view.selectionModel()
+        if sel_model is not None:
+            sel_model.selectionChanged.connect(self.on_selection_changed)
 
     def on_selection_changed(self, selected, deselected):
         if not selected.indexes():
@@ -106,7 +118,7 @@ class AccountView(QWidget):
 
         row = selected.indexes()[0].row()
         self.current_account_id = self.model.record(row).value("id")
-        
+
         account = account_controller.get_account_by_id(self.current_account_id)
         if account:
             self.platform_input.setText(account.platform)
@@ -125,7 +137,7 @@ class AccountView(QWidget):
             return
 
         account_controller.add_account(platform, username, password, remark)
-        self.model.select() # Refresh table
+        self.model.select()  # Refresh table
         self.clear_form()
 
     def save_account(self):
@@ -139,26 +151,31 @@ class AccountView(QWidget):
             "password": self.password_input.text(),
             "remark": self.remark_input.text()
         }
-        
+
         if not all([data["platform"], data["username"], data["password"]]):
             QMessageBox.warning(self, "输入错误", "平台、用户名和密码不能为空。")
             return
 
         account_controller.update_account(self.current_account_id, data)
-        self.model.select() # Refresh table
+        self.model.select()  # Refresh table
         QMessageBox.information(self, "成功", "账号信息已更新。")
 
     def delete_account(self):
         if self.current_account_id is None:
             QMessageBox.warning(self, "操作错误", "请先选择一个要删除的账号。")
             return
-        
-        reply = QMessageBox.question(self, "确认删除", "确定要删除这个账号吗？",
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        reply = QMessageBox.question(
+            self,
+            "确认删除",
+            "确定要删除这个账号吗？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
 
         if reply == QMessageBox.Yes:
             account_controller.delete_account(self.current_account_id)
-            self.model.select() # Refresh table
+            self.model.select()  # Refresh table
             self.clear_form()
 
     def clear_form(self):

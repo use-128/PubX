@@ -9,6 +9,7 @@ dependencies = [
     "sqlmodel>=0.0.16",
     "sqlalchemy>=2.0.29",
     "playwright>=1.42.0",
+    "retrying>=1.4.2",
 ]
 
 [tool.setuptools]
